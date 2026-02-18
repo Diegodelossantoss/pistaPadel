@@ -18,13 +18,12 @@ public class UserController {
         this.userRepository = userRepository;
     }
 
-    // GET /pistaPadel/users  (ADMIN)
     @GetMapping
     public ResponseEntity<?> getAllUsers() {
         return ResponseEntity.ok(userRepository.findAll()); // 200
     }
 
-    // GET /pistaPadel/users/{userId} (ADMIN o dueño; por ahora solo ADMIN por SecurityConfig)
+
     @GetMapping("/{userId}")
     public ResponseEntity<?> getUserById(@PathVariable Long userId) {
         return userRepository.findById(userId)
@@ -33,7 +32,6 @@ public class UserController {
                         .body("Usuario no encontrado")); // 404
     }
 
-    // PATCH /pistaPadel/users/{userId}
     @PatchMapping("/{userId}")
     public ResponseEntity<?> patchUser(@PathVariable Long userId,
                                        @RequestBody Map<String, Object> updates) {
@@ -53,7 +51,7 @@ public class UserController {
             u.setTelefono((String) updates.get("telefono"));
         }
 
-        // Si permitís cambiar email, aquí está la prueba del 409 (email duplicado)
+
         if (updates.containsKey("email")) {
             String nuevoEmail = (String) updates.get("email");
             if (nuevoEmail == null || nuevoEmail.isBlank()) {
