@@ -44,10 +44,24 @@ public class ReservaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteReservation(@PathVariable Long id) {
-        PadelService.borrarReserva(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> cancelReservation(@PathVariable Long id) {
+
+        Reserva reserva = reservaRepository.findById(id).orElse(null);
+
+        if (reserva == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada"); // 404
+        }
+
+        if ("CANCELADA".equalsIgnoreCase(reserva.getEstado())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("La reserva ya está cancelada"); // 409
+        }
+
+        reserva.setEstado("CANCELADA");
+        reservaRepository.save(reserva);
+
+        return ResponseEntity.noContent().build(); // 204
     }
+
 }
 
 

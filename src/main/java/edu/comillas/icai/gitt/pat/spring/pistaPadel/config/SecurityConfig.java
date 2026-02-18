@@ -16,6 +16,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/pistaPadel/auth/**").permitAll()
                 .requestMatchers("/pistaPadel/users/**").hasRole("ADMIN")
+                .requestMatchers("/pistaPadel/reservas/**").authenticated()
                 .anyRequest().permitAll()
             )
             .httpBasic(Customizer.withDefaults());
