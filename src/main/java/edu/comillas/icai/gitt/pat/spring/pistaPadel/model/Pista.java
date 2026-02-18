@@ -11,7 +11,7 @@ public class Pista {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPista;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String nombre;
 
     @Column(nullable = false)

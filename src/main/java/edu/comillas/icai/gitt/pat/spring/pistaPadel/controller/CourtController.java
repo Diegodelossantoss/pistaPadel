@@ -18,11 +18,16 @@ public class CourtController {
 
     @Autowired
     private PistaRepository pistaRepository;
-
     @GetMapping
-    public List<Pista> getAllCourts() {
-        return pistaRepository.findAll(); 
+    public List<Pista> getAllCourts(@RequestParam(required = false) Boolean active) {
+
+        if (active == null) {
+            return pistaRepository.findAll();
+        }
+
+        return pistaRepository.findByActiva(active);
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getCourtById(@PathVariable Long id) {
@@ -31,14 +36,29 @@ public class CourtController {
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada")); // 404
     }
 
-
     @PostMapping
     public ResponseEntity<Pista> createCourt(@RequestBody Pista pista) {
-    if (pista.getFechaAlta() == null) pista.setFechaAlta(java.time.LocalDateTime.now());
-    pista.setActiva(true);
-    Pista saved = pistaRepository.save(pista);
-    return ResponseEntity.status(HttpStatus.CREATED).body(saved); // 201
-}
+        if (pista.getNombre() == null ||
+            pista.getUbicacion() == null ||
+            pista.getPrecioHora() == null) {
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+
+        if (pistaRepository.findByNombre(pista.getNombre()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        }
+
+        if (pista.getFechaAlta() == null)
+            pista.setFechaAlta(java.time.LocalDateTime.now());
+
+        pista.setActiva(true);
+
+        Pista saved = pistaRepository.save(pista);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
 
 
     @PutMapping("/{id}")

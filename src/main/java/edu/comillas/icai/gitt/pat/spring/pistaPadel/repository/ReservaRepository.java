@@ -12,7 +12,8 @@ import java.util.List;
 public interface ReservaRepository extends JpaRepository<Reserva, Long> {
 
     List<Reserva> findByIdUsuario(Long idUsuario);
-
+    List<Reserva> findByIdPistaAndFechaReservaAndEstado(Long idPista, LocalDate fechaReserva, String estado);
+    
     @Query("""
         SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END
         FROM Reserva r
