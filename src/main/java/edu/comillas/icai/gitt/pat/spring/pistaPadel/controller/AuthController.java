@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+
 @RestController
 @RequestMapping("/pistaPadel/auth")
 public class AuthController {
@@ -16,13 +18,16 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Usuario usuario) {
-        // Regla: El email debe ser único [cite: 224]
-        if (usuarioRepository.findByEmail(usuario.email()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("El email ya existe"); // Error 409
+
+        if (usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("El email ya existe"); // 409
         }
 
-        // Guardamos el usuario (en una app real aquí cifraríamos la password [cite: 208])
+        if (usuario.getFechaRegistro() == null) usuario.setFechaRegistro(LocalDateTime.now());
+        if (usuario.getRol() == null) usuario.setRol("USER");
+        usuario.setActivo(true);
+
         usuarioRepository.save(usuario);
-        return ResponseEntity.status(HttpStatus.CREATED).body(usuario); // 201 Creado [cite: 152]
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuario); // 201
     }
 }
