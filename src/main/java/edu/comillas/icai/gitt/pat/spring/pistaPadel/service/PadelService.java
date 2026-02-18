@@ -43,14 +43,15 @@ public class PadelService {
         if (!reserva.getHoraInicio().isBefore(horaFinReal)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "La hora de inicio debe ser anterior a la de fin");
-        }
-
+                }
+                
         boolean overlap = reservaRepository.existsOverlappingReservation(
                 reserva.getIdPista(),
                 reserva.getFechaReserva(),
                 reserva.getHoraInicio(),
                 horaFinReal
         );
+
 
         if (overlap) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una reserva en ese horario");

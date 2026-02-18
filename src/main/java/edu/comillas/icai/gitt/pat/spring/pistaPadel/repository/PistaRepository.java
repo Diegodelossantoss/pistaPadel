@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.List;
 
 public interface PistaRepository extends JpaRepository<Pista, Long> {
-    // Buscamos por nombre porque la guía dice que el nombre de la pista es único
+
     Optional<Pista> findByNombre(String nombre);
     List<Pista> findByActiva(boolean activa);
 }
