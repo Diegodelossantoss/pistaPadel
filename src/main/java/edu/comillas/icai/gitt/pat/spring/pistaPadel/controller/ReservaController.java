@@ -5,6 +5,8 @@ import edu.comillas.icai.gitt.pat.spring.pistaPadel.service.PadelService;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Reserva;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.PistaRepository;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,12 +15,14 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalTime;
 import java.util.List;
 
+
 @RestController
-@RequestMapping("/pistaPadel/reservas")
+@RequestMapping("/pistaPadel/reservations")
 public class ReservaController {
 
     private final ReservaRepository reservaRepository;
     private final PadelService padelService;
+    private static final Logger logger = LoggerFactory.getLogger(ReservaController.class);
 
     public ReservaController(ReservaRepository reservaRepository, PadelService PadelService) {
         this.reservaRepository = reservaRepository;
@@ -38,9 +42,15 @@ public class ReservaController {
     }
 
     @PostMapping
-    public ResponseEntity<Reserva> createReservation(@RequestBody Reserva reserva) {
-        Reserva saved = padelService.crearReserva(reserva);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    public ResponseEntity<?> createReservation(@RequestBody Reserva reserva) {
+        logger.info("Intento de reserva para usuario {}", reserva.getIdUsuario()); // Traza obligatoria
+        try {
+            Reserva saved = padelService.crearReserva(reserva);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved); // Código 201 [cite: 169]
+        } catch (Exception e) {
+            logger.error("Error al reservar: {}", e.getMessage()); // Traza de error
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage()); // Código 409 [cite: 169, 182]
+        }
     }
 
     @DeleteMapping("/{id}")
