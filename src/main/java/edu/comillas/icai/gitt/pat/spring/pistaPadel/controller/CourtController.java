@@ -37,7 +37,7 @@ public class CourtController {
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> {
                     logger.error("Pista con ID {} no encontrada", id);
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada"); // 404 [cite: 162]
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada");
                 });
     }
 
@@ -79,11 +79,11 @@ public class CourtController {
 
         if (!pistaRepository.existsById(id)) {
             logger.error("Error al borrar: Pista {} no encontrada", id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404 [cite: 164]
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         pistaRepository.deleteById(id);
         logger.debug("Pista {} borrada correctamente", id);
-        return ResponseEntity.noContent().build(); // 204 OK [cite: 164]
+        return ResponseEntity.noContent().build();
     }
 }
