@@ -112,6 +112,7 @@ public class ReservaControllerTest {
         reserva.setDuracionMinutos(60);
         reserva.setHoraFin(LocalTime.of(12, 0));
         reserva.setEstado("CONFIRMADA");
+        reserva.setFechaCreacion(LocalDateTime.now());
         reserva = reservaRepository.save(reserva);
 
         mockMvc.perform(delete("/pistaPadel/reservations/" + reserva.getIdReserva()))
@@ -128,6 +129,7 @@ public class ReservaControllerTest {
         reserva.setDuracionMinutos(60);
         reserva.setHoraFin(LocalTime.of(13, 0));
         reserva.setEstado("CONFIRMADA");
+        reserva.setFechaCreacion(LocalDateTime.now());
         reserva = reservaRepository.save(reserva);
 
         String body = """

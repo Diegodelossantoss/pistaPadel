@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 
@@ -35,6 +37,7 @@ public class CourtControllerTest {
         pista.setUbicacion("Madrid");
         pista.setPrecioHora(20.0);
         pista.setActiva(true);
+        pista.setFechaAlta(LocalDateTime.now());
 
         pistaRepository.save(pista);
     }
