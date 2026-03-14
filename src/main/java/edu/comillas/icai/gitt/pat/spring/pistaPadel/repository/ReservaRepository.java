@@ -14,6 +14,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     // Para AvailabilityController / ReservaController
     List<Reserva> findByIdPistaAndFechaReservaAndEstado(Long idPista, LocalDate fechaReserva, String estado);
 
+    List<Reserva> findByUsuarioId(Long usuarioId);
+
     // Solape (crear): si lo estás usando en PadelService
     @Query("""
         SELECT COUNT(r) > 0

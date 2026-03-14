@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.security.Principal;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
 
 
 @RestController
@@ -22,17 +24,29 @@ public class ReservaController {
 
     private final ReservaRepository reservaRepository;
     private final PadelService padelService;
+    private final UserRepository userRepository;
     private static final Logger logger = LoggerFactory.getLogger(ReservaController.class);
 
-    public ReservaController(ReservaRepository reservaRepository, PadelService PadelService) {
+    public ReservaController(ReservaRepository reservaRepository, PadelService PadelService, UserRepository userRepository) {
         this.reservaRepository = reservaRepository;
         this.padelService = PadelService;
+        this.userRepository = userRepository;
+
     }
 
     @GetMapping
-    public ResponseEntity<?> getReservations() {
-        return ResponseEntity.ok(reservaRepository.findAll());
+    public ResponseEntity<?> getReservations(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
+        }
+
+        String email = principal.getName();
+
+        return userRepository.findByEmail(email)
+                .<ResponseEntity<?>>map(usuario -> ResponseEntity.ok(reservaRepository.findByUsuarioId(usuario.getIdUsuario())))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado"));
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getReservationById(@PathVariable Long id) {

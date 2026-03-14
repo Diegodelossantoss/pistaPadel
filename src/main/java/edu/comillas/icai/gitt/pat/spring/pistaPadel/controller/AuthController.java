@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/pistaPadel/auth")
@@ -57,18 +58,20 @@ public class AuthController {
 
 
     @GetMapping("/me")
-    public ResponseEntity<?> me(@RequestParam String email) {
+    public ResponseEntity<?> me(Authentication authentication) {
 
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Falta el email"); // 400
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("No autenticado");
         }
 
-        return usuarioRepository.findByEmail(email)
-                .<ResponseEntity<?>>map(ResponseEntity::ok) // 200
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Usuario no encontrado")); // 404
-    }
+        String email = authentication.getName();
 
+        return usuarioRepository.findByEmail(email)
+                .<ResponseEntity<?>>map(usuario -> ResponseEntity.ok(usuario))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Usuario no encontrado"));
+    }
 
 
 
