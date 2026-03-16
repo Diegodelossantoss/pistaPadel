@@ -27,7 +27,7 @@ public class SecurityConfig {
                     //autenticado
                     .requestMatchers("/pistaPadel/auth/me").authenticated()
                     .requestMatchers("/pistaPadel/auth/logout").authenticated()
-                    .requestMatchers("/pistaPadel/reservas/**").authenticated()
+                    .requestMatchers("/pistaPadel/reservations/**").authenticated()
                     .requestMatchers("/pistaPadel/users/*").authenticated()
 
                     //solo admin
