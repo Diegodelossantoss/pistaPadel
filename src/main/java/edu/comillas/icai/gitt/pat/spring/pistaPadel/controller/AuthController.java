@@ -2,73 +2,84 @@ package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
 
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/pistaPadel/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private UserRepository usuarioRepository;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Usuario usuario) {
+        logger.info("Intentando registrar usuario: {}", usuario.getEmail());
 
         if (usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("El email ya existe"); // 409
+            logger.error("Registro fallido: el email {} ya existe", usuario.getEmail());
+
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("El email ya existe");
         }
 
-        if (usuario.getFechaRegistro() == null) usuario.setFechaRegistro(LocalDateTime.now());
-        if (usuario.getRol() == null) usuario.setRol("USER");
+        usuario.setFechaRegistro(LocalDateTime.now());
+        usuario.setRol("USER");
         usuario.setActivo(true);
 
-        usuarioRepository.save(usuario);
-        return ResponseEntity.status(HttpStatus.CREATED).body(usuario); // 201
+        Usuario guardado = usuarioRepository.save(usuario);
+        logger.info("Usuario registrado con éxito: {}", guardado.getEmail());
+        return ResponseEntity.status(HttpStatus.CREATED).body(guardado);
     }
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Usuario usuario) {
-
-        if (usuario.getEmail() == null || usuario.getPassword() == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Falta email o password"); // 400
-        }
+        logger.info("Intento de login para: {}", usuario.getEmail());
 
         return usuarioRepository.findByEmail(usuario.getEmail())
                 .map(u -> {
                     if (u.getPassword().equals(usuario.getPassword())) {
-                        return ResponseEntity.ok("Login correcto"); // 200
+                        logger.info("Login correcto: {}", u.getEmail());
+                        return ResponseEntity.ok("Login correcto");
                     } else {
-                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                                .body("Credenciales incorrectas"); // 401
+                        logger.error("Password incorrecto para: {}", u.getEmail());
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciales incorrectas");
                     }
                 })
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body("Credenciales incorrectas")); // 401
+                .orElseGet(() -> {
+                    logger.error("Usuario no encontrado: {}", usuario.getEmail());
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciales incorrectas");
+                });
     }
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
-        return ResponseEntity.noContent().build(); // 204
+        logger.info("Logout realizado");
+        return ResponseEntity.noContent().build();
     }
 
 
     @GetMapping("/me")
-    public ResponseEntity<?> me(@RequestParam String email) {
+    public ResponseEntity<?> me(Authentication authentication) {
 
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Falta el email"); // 400
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("No autenticado");
         }
 
-        return usuarioRepository.findByEmail(email)
-                .<ResponseEntity<?>>map(ResponseEntity::ok) // 200
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Usuario no encontrado")); // 404
-    }
+        String email = authentication.getName();
 
+        return usuarioRepository.findByEmail(email)
+                .<ResponseEntity<?>>map(usuario -> ResponseEntity.ok(usuario))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Usuario no encontrado"));
+    }
 
 
 
