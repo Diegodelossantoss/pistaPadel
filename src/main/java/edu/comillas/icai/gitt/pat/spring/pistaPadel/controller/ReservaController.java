@@ -43,7 +43,7 @@ public class ReservaController {
         String email = principal.getName();
 
         return userRepository.findByEmail(email)
-                .<ResponseEntity<?>>map(usuario -> ResponseEntity.ok(reservaRepository.findByUsuarioId(usuario.getIdUsuario())))
+                .<ResponseEntity<?>>map(usuario -> ResponseEntity.ok(reservaRepository.findByIdUsuario(usuario.getIdUsuario())))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado"));
     }
 
