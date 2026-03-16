@@ -108,7 +108,12 @@ public class ReservaController {
 
         Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
         if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No puedes modificar esta reserva");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para modificar esta reserva");
+        }
+
+        // AÑADIDO: No permitir editar si ya está cancelada
+        if ("CANCELADA".equalsIgnoreCase(reserva.getEstado())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("No se puede modificar una reserva que ya ha sido cancelada");
         }
 
         if (cambios.getFechaReserva() != null) reserva.setFechaReserva(cambios.getFechaReserva());
@@ -119,7 +124,7 @@ public class ReservaController {
         reserva.setHoraFin(horaFinReal);
 
         if (!reserva.getHoraInicio().isBefore(reserva.getHoraFin())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Horario inválido"); // 400
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Horario inválido");
         }
 
         boolean overlap = reservaRepository.existsOverlappingReservationExcludingId(
@@ -130,15 +135,13 @@ public class ReservaController {
                 reserva.getIdReserva()
         );
 
-
         if (overlap) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Nuevo horario ocupado"); // 409
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Nuevo horario ocupado");
         }
 
         Reserva saved = reservaRepository.save(reserva);
-        return ResponseEntity.ok(saved); // 200
+        return ResponseEntity.ok(saved);
     }
-
 
 }
 
