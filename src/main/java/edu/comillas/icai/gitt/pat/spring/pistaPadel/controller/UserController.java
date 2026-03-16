@@ -2,11 +2,13 @@ package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
 
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.Map;
 
@@ -29,8 +31,15 @@ public class UserController {
 
 
     @GetMapping("/{userId}")
-    public ResponseEntity<?> getUserById(@PathVariable Long userId) {
+    public ResponseEntity<?> getUserById(@PathVariable Long userId, Authentication authentication) {
         logger.debug("Buscando usuario ID: {}", userId);
+
+
+        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(userId))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para ver este perfil");
+        }
+
         return userRepository.findById(userId)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> {
@@ -40,8 +49,14 @@ public class UserController {
     }
 
     @PatchMapping("/{userId}")
-    public ResponseEntity<?> patchUser(@PathVariable Long userId, @RequestBody Map<String, Object> updates) {
+    public ResponseEntity<?> patchUser(@PathVariable Long userId, @RequestBody Map<String, Object> updates, Authentication authentication) { // AÑADIDO: Authentication
         logger.info("Actualizando usuario ID: {}", userId);
+
+        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(userId))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para modificar este perfil");
+        }
+
         Usuario u = userRepository.findById(userId).orElse(null);
         if (u == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 

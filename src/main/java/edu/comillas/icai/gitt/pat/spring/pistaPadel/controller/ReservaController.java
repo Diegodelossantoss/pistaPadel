@@ -1,4 +1,5 @@
 package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.service.PadelService;
 
 
@@ -16,6 +17,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.security.Principal;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
+import org.springframework.security.core.Authentication;
 
 
 @RestController
@@ -49,10 +51,17 @@ public class ReservaController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getReservationById(@PathVariable Long id) {
-        return reservaRepository.findById(id)
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada"));
+    public ResponseEntity<?> getReservationById(@PathVariable Long id, Authentication authentication) {
+        Reserva reserva = reservaRepository.findById(id).orElse(null);
+        if (reserva == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
+
+
+        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para ver esta reserva");
+        }
+
+        return ResponseEntity.ok(reserva);
     }
 
     @PostMapping
@@ -68,33 +77,38 @@ public class ReservaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> cancelReservation(@PathVariable Long id) {
+    public ResponseEntity<?> cancelReservation(@PathVariable Long id, Authentication authentication) { // AÑADIDO: Authentication
 
         Reserva reserva = reservaRepository.findById(id).orElse(null);
-
         if (reserva == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada"); // 404
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
+        }
+
+        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No puedes cancelar una reserva que no es tuya");
         }
 
         if ("CANCELADA".equalsIgnoreCase(reserva.getEstado())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("La reserva ya está cancelada"); // 409
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("La reserva ya está cancelada");
         }
 
         reserva.setEstado("CANCELADA");
         reservaRepository.save(reserva);
-
-        return ResponseEntity.noContent().build(); // 204
+        return ResponseEntity.noContent().build();
     }
+
     @PatchMapping("/{id}")
-    public ResponseEntity<?> patchReservation(@PathVariable Long id, @RequestBody Reserva cambios) {
+    public ResponseEntity<?> patchReservation(@PathVariable Long id, @RequestBody Reserva cambios, Authentication authentication) {
 
         Reserva reserva = reservaRepository.findById(id).orElse(null);
         if (reserva == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada"); // 404
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
         }
 
-        if ("CANCELADA".equalsIgnoreCase(reserva.getEstado())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("No se puede modificar una reserva cancelada"); // 409
+        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No puedes modificar esta reserva");
         }
 
         if (cambios.getFechaReserva() != null) reserva.setFechaReserva(cambios.getFechaReserva());
