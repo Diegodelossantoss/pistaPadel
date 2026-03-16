@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -73,12 +75,14 @@ public class ReservaControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "lucia@test.com", roles = "USER")
     void getReservations_shouldReturn200() throws Exception {
         mockMvc.perform(get("/pistaPadel/reservations"))
                 .andExpect(status().isOk());
     }
 
     @Test
+    @WithMockUser(username = "lucia@test.com", roles = "USER")
     void createReservation_shouldReturn201() throws Exception {
         String body = """
             {
@@ -97,12 +101,14 @@ public class ReservaControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "lucia@test.com", roles = "USER")
     void getReservationById_notFound_shouldReturn404() throws Exception {
         mockMvc.perform(get("/pistaPadel/reservations/99999"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
+    @WithMockUser(username = "lucia@test.com", roles = "USER")
     void cancelReservation_shouldReturn204() throws Exception {
         Reserva reserva = new Reserva();
         reserva.setIdUsuario(idUsuario);
@@ -120,6 +126,7 @@ public class ReservaControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "lucia@test.com", roles = "USER")
     void patchReservation_shouldReturn200() throws Exception {
         Reserva reserva = new Reserva();
         reserva.setIdUsuario(idUsuario);
