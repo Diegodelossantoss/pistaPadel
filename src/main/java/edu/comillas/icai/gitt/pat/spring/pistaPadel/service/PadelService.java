@@ -1,6 +1,7 @@
 package edu.comillas.icai.gitt.pat.spring.pistaPadel.service;
 
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Reserva;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Pista;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.PistaRepository;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository;
 import org.slf4j.Logger;
@@ -19,6 +20,9 @@ public class PadelService {
     private final ReservaRepository reservaRepository;
     private final PistaRepository pistaRepository;
 
+    private static final LocalTime HORA_APERTURA = LocalTime.of(9, 0);
+    private static final LocalTime HORA_CIERRE = LocalTime.of(22, 0);
+
     public PadelService(ReservaRepository reservaRepository, PistaRepository pistaRepository) {
         this.reservaRepository = reservaRepository;
         this.pistaRepository = pistaRepository;
@@ -28,27 +32,40 @@ public class PadelService {
         logger.debug("Iniciando validación de reserva para pista: {} en fecha: {}",
                 reserva.getIdPista(), reserva.getFechaReserva());
 
-        if (reserva.getIdPista() == null || pistaRepository.findById(reserva.getIdPista()).isEmpty()) {
+        // 1. Verificar si la pista existe
+        Pista pista = pistaRepository.findById(reserva.getIdPista()).orElse(null);
+        if (pista == null) {
             logger.error("Error al crear reserva: Pista no existe");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La pista indicada no existe");
+        }
+
+        // AÑADIDO: REGLA DE NEGOCIO - No se puede reservar una pista inactiva
+        if (!pista.isActiva()) {
+            logger.error("Error: Intento de reserva en pista inactiva (ID: {})", pista.getIdPista());
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La pista seleccionada no está disponible actualmente");
         }
 
         if (reserva.getFechaReserva() == null || reserva.getHoraInicio() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Faltan datos de fecha u hora");
         }
 
+        // Calcular hora de fin
         LocalTime horaFinReal = reserva.getHoraFin();
         if (horaFinReal == null) {
             if (reserva.getDuracionMinutos() <= 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Debes indicar horaFin o una duracionMinutos > 0");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debes indicar duración");
             }
             horaFinReal = reserva.getHoraInicio().plusMinutes(reserva.getDuracionMinutos());
         }
 
+
+        if (reserva.getHoraInicio().isBefore(HORA_APERTURA) || horaFinReal.isAfter(HORA_CIERRE)) {
+            logger.error("Error: Reserva fuera de horario del club ({} - {})", reserva.getHoraInicio(), horaFinReal);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El club solo abre de 09:00 a 22:00");
+        }
+
         if (!reserva.getHoraInicio().isBefore(horaFinReal)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "La hora de inicio debe ser anterior a la de fin");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La hora de inicio debe ser anterior a la de fin");
         }
 
         boolean overlap = reservaRepository.existsOverlappingReservation(
@@ -64,7 +81,6 @@ public class PadelService {
         }
 
         reserva.setHoraFin(horaFinReal);
-
         if (reserva.getEstado() == null) reserva.setEstado("ACTIVA");
         if (reserva.getFechaCreacion() == null) reserva.setFechaCreacion(LocalDateTime.now());
 
