@@ -4,6 +4,8 @@ import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Pista;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Reserva;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.PistaRepository;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,7 @@ import java.util.List;
 @RequestMapping("/pistaPadel")
 public class AvailabilityController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AvailabilityController.class);
     private final ReservaRepository reservaRepository;
     private final PistaRepository pistaRepository;
 
@@ -34,25 +37,26 @@ public class AvailabilityController {
     public ResponseEntity<?> availability(@RequestParam String date, @RequestParam Long courtId) {
         return availabilityForCourtAndDate(courtId, date);
     }
- 
+
     @GetMapping("/courts/{courtId}/availability")
     public ResponseEntity<?> availabilityByCourt(@PathVariable Long courtId, @RequestParam String date) {
+        // AÑADIDO: Traza de nivel DEBUG para depuración técnica
+        logger.debug("Consulta de disponibilidad por ID de pista: ID={}, Fecha={}", courtId, date);
         return availabilityForCourtAndDate(courtId, date);
     }
 
     private ResponseEntity<?> availabilityForCourtAndDate(Long courtId, String dateStr) {
-
-
         LocalDate date;
         try {
             date = LocalDate.parse(dateStr);
         } catch (Exception e) {
+            logger.error("Error en formato de fecha recibido: {}", dateStr);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Formato de fecha inválido (usa YYYY-MM-DD)");
         }
 
-
         Pista pista = pistaRepository.findById(courtId).orElse(null);
         if (pista == null) {
+            logger.error("Pista con ID {} no encontrada para consultar disponibilidad", courtId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada");
         }
 
@@ -70,12 +74,13 @@ public class AvailabilityController {
             );
 
             if (!ocupado) {
-                libres.add(slotInicio.toString()); // "09:00"
+                libres.add(slotInicio.toString());
             }
 
             t = t.plusMinutes(SLOT_MINUTES);
         }
 
-        return ResponseEntity.ok(libres); // 200
+        logger.info("Disponibilidad calculada con éxito para pista {} el {}", courtId, dateStr);
+        return ResponseEntity.ok(libres);
     }
 }

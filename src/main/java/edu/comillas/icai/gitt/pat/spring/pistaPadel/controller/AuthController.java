@@ -54,6 +54,8 @@ public class AuthController {
     public ResponseEntity<?> logout() {
         return ResponseEntity.noContent().build(); // 204
     }
+
+
     @GetMapping("/me")
     public ResponseEntity<?> me(@RequestParam String email) {
 
@@ -66,4 +68,8 @@ public class AuthController {
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Usuario no encontrado")); // 404
     }
+
+
+
+
 }
