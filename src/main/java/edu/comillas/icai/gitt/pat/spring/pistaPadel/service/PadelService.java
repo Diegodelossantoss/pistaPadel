@@ -39,7 +39,6 @@ public class PadelService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La pista indicada no existe");
         }
 
-        // AÑADIDO: REGLA DE NEGOCIO - No se puede reservar una pista inactiva
         if (!pista.isActiva()) {
             logger.error("Error: Intento de reserva en pista inactiva (ID: {})", pista.getIdPista());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La pista seleccionada no está disponible actualmente");
@@ -49,7 +48,14 @@ public class PadelService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Faltan datos de fecha u hora");
         }
 
-        // Calcular hora de fin
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime momentoReserva = LocalDateTime.of(reserva.getFechaReserva(), reserva.getHoraInicio());
+
+        if (momentoReserva.isBefore(ahora)) {
+            logger.error("Error: Intento de reserva en fecha/hora pasada: {}", momentoReserva);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No puedes reservar en una fecha o hora que ya ha pasado");
+        }
+
         LocalTime horaFinReal = reserva.getHoraFin();
         if (horaFinReal == null) {
             if (reserva.getDuracionMinutos() <= 0) {
