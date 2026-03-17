@@ -1,8 +1,7 @@
 package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
+
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.service.PadelService;
-
-
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Reserva;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.PistaRepository;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository;
@@ -13,8 +12,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.security.Principal;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
 import org.springframework.security.core.Authentication;
@@ -33,11 +34,12 @@ public class ReservaController {
         this.reservaRepository = reservaRepository;
         this.padelService = PadelService;
         this.userRepository = userRepository;
-
     }
 
     @GetMapping
-    public ResponseEntity<?> getReservations(Principal principal) {
+    public ResponseEntity<?> getReservations(Principal principal,
+                                             @RequestParam(required = false) String from,
+                                             @RequestParam(required = false) String to) {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
         }
@@ -45,7 +47,24 @@ public class ReservaController {
         String email = principal.getName();
 
         return userRepository.findByEmail(email)
-                .<ResponseEntity<?>>map(usuario -> ResponseEntity.ok(reservaRepository.findByIdUsuario(usuario.getIdUsuario())))
+                .<ResponseEntity<?>>map(usuario -> {
+                    List<Reserva> reservas = reservaRepository.findByIdUsuario(usuario.getIdUsuario());
+
+                    if (from != null) {
+                        LocalDate fromDate = LocalDate.parse(from);
+                        reservas = reservas.stream()
+                                .filter(r -> !r.getFechaReserva().isBefore(fromDate))
+                                .collect(Collectors.toList());
+                    }
+                    if (to != null) {
+                        LocalDate toDate = LocalDate.parse(to);
+                        reservas = reservas.stream()
+                                .filter(r -> !r.getFechaReserva().isAfter(toDate))
+                                .collect(Collectors.toList());
+                    }
+
+                    return ResponseEntity.ok(reservas);
+                })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado"));
     }
 
@@ -54,7 +73,6 @@ public class ReservaController {
     public ResponseEntity<?> getReservationById(@PathVariable Long id, Authentication authentication) {
         Reserva reserva = reservaRepository.findById(id).orElse(null);
         if (reserva == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
-
 
         Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
         if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
@@ -66,18 +84,18 @@ public class ReservaController {
 
     @PostMapping
     public ResponseEntity<?> createReservation(@RequestBody Reserva reserva) {
-        logger.info("Intento de reserva para usuario {}", reserva.getIdUsuario()); // Traza obligatoria
+        logger.info("Intento de reserva para usuario {}", reserva.getIdUsuario());
         try {
             Reserva saved = padelService.crearReserva(reserva);
-            return ResponseEntity.status(HttpStatus.CREATED).body(saved); // Código 201 [cite: 169]
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (Exception e) {
-            logger.error("Error al reservar: {}", e.getMessage()); // Traza de error
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage()); // Código 409 [cite: 169, 182]
+            logger.error("Error al reservar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> cancelReservation(@PathVariable Long id, Authentication authentication) { // AÑADIDO: Authentication
+    public ResponseEntity<?> cancelReservation(@PathVariable Long id, Authentication authentication) {
 
         Reserva reserva = reservaRepository.findById(id).orElse(null);
         if (reserva == null) {
@@ -111,7 +129,6 @@ public class ReservaController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para modificar esta reserva");
         }
 
-        // AÑADIDO: No permitir editar si ya está cancelada
         if ("CANCELADA".equalsIgnoreCase(reserva.getEstado())) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("No se puede modificar una reserva que ya ha sido cancelada");
         }
@@ -142,7 +159,4 @@ public class ReservaController {
         Reserva saved = reservaRepository.save(reserva);
         return ResponseEntity.ok(saved);
     }
-
 }
-
-

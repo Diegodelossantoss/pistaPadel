@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/pistaPadel")
@@ -32,15 +34,37 @@ public class AvailabilityController {
         this.pistaRepository = pistaRepository;
     }
 
-    
     @GetMapping("/availability")
-    public ResponseEntity<?> availability(@RequestParam String date, @RequestParam Long courtId) {
-        return availabilityForCourtAndDate(courtId, date);
+    public ResponseEntity<?> availability(@RequestParam String date,
+                                          @RequestParam(required = false) Long courtId) {
+        if (courtId != null) {
+            return availabilityForCourtAndDate(courtId, date);
+        }
+
+        // Sin courtId: devolver disponibilidad de todas las pistas activas
+        LocalDate parsedDate;
+        try {
+            parsedDate = LocalDate.parse(date);
+        } catch (Exception e) {
+            logger.error("Error en formato de fecha recibido: {}", date);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Formato de fecha inválido (usa YYYY-MM-DD)");
+        }
+
+        List<Pista> pistas = pistaRepository.findByActiva(true);
+        Map<String, List<String>> resultado = new HashMap<>();
+
+        for (Pista pista : pistas) {
+            List<Reserva> reservas = reservaRepository.findByIdPistaAndFechaReservaAndEstado(
+                    pista.getIdPista(), parsedDate, "ACTIVA");
+            resultado.put(pista.getNombre(), calcularSlots(reservas));
+        }
+
+        logger.info("Disponibilidad calculada para todas las pistas en fecha {}", date);
+        return ResponseEntity.ok(resultado);
     }
 
     @GetMapping("/courts/{courtId}/availability")
     public ResponseEntity<?> availabilityByCourt(@PathVariable Long courtId, @RequestParam String date) {
-        // AÑADIDO: Traza de nivel DEBUG para depuración técnica
         logger.debug("Consulta de disponibilidad por ID de pista: ID={}, Fecha={}", courtId, date);
         return availabilityForCourtAndDate(courtId, date);
     }
@@ -61,7 +85,11 @@ public class AvailabilityController {
         }
 
         List<Reserva> reservas = reservaRepository.findByIdPistaAndFechaReservaAndEstado(courtId, date, "ACTIVA");
+        logger.info("Disponibilidad calculada con éxito para pista {} el {}", courtId, dateStr);
+        return ResponseEntity.ok(calcularSlots(reservas));
+    }
 
+    private List<String> calcularSlots(List<Reserva> reservas) {
         List<String> libres = new ArrayList<>();
         LocalTime t = OPEN;
 
@@ -73,14 +101,10 @@ public class AvailabilityController {
                     slotInicio.isBefore(r.getHoraFin()) && slotFin.isAfter(r.getHoraInicio())
             );
 
-            if (!ocupado) {
-                libres.add(slotInicio.toString());
-            }
-
+            if (!ocupado) libres.add(slotInicio.toString());
             t = t.plusMinutes(SLOT_MINUTES);
         }
 
-        logger.info("Disponibilidad calculada con éxito para pista {} el {}", courtId, dateStr);
-        return ResponseEntity.ok(libres);
+        return libres;
     }
 }

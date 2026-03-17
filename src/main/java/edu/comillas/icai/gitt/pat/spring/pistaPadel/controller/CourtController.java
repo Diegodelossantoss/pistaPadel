@@ -6,8 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import java.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,13 +20,13 @@ public class CourtController {
 
     @Autowired
     private PistaRepository pistaRepository;
+
     @GetMapping
     public List<Pista> getAllCourts(@RequestParam(required = false) Boolean active) {
         logger.info("Consultando listado de pistas. Filtro activo: {}", active);
         if (active == null) return pistaRepository.findAll();
         return pistaRepository.findByActiva(active);
     }
-
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getCourtById(@PathVariable Long id) {
@@ -51,14 +49,12 @@ public class CourtController {
         }
 
         pista.setActiva(true);
-        pista.setFechaAlta(java.time.LocalDateTime.now());
+        pista.setFechaAlta(LocalDateTime.now());
         Pista saved = pistaRepository.save(pista);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-
     }
 
-
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     public ResponseEntity<?> updateCourt(@PathVariable Long id, @RequestBody Pista pista) {
         logger.info("ADMIN actualizando pista con ID: {}", id);
 
@@ -71,7 +67,6 @@ public class CourtController {
         Pista saved = pistaRepository.save(pista);
         return ResponseEntity.ok(saved);
     }
-
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCourt(@PathVariable Long id) {
