@@ -36,7 +36,7 @@ public class PadelService {
         Pista pista = pistaRepository.findById(reserva.getIdPista()).orElse(null);
         if (pista == null) {
             logger.error("Error al crear reserva: Pista no existe");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La pista indicada no existe");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "La pista indicada no existe");
         }
 
         if (!pista.isActiva()) {

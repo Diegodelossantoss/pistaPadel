@@ -83,15 +83,19 @@ public class ReservaController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createReservation(@RequestBody Reserva reserva) {
-        logger.info("Intento de reserva para usuario {}", reserva.getIdUsuario());
-        try {
-            Reserva saved = padelService.crearReserva(reserva);
-            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-        } catch (Exception e) {
-            logger.error("Error al reservar: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+    public ResponseEntity<?> createReservation(@RequestBody Reserva reserva, Authentication authentication) {
+        logger.info("Intento de crear reserva");
+
+        Usuario usuario = userRepository.findByEmail(authentication.getName()).orElse(null);
+
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no autenticado");
         }
+
+        reserva.setIdUsuario(usuario.getIdUsuario());
+
+        Reserva saved = padelService.crearReserva(reserva);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @DeleteMapping("/{id}")

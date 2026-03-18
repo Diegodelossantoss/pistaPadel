@@ -39,6 +39,8 @@ public class SecurityConfig {
                         .requestMatchers("/pistaPadel/availability/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/pistaPadel/courts").permitAll()
                         .requestMatchers(HttpMethod.GET, "/pistaPadel/courts/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/pistaPadel/courts/*/availability").permitAll()
+
 
                         .requestMatchers("/pistaPadel/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/pistaPadel/users").hasRole("ADMIN")
