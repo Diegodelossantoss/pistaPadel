@@ -11,12 +11,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository;
 
+
+
+@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500"})
 @RestController
 @RequestMapping("/pistaPadel/courts")
 public class CourtController {
 
     private static final Logger logger = LoggerFactory.getLogger(CourtController.class);
+
+    @Autowired
+    private ReservaRepository reservaRepository;
 
     @Autowired
     private PistaRepository pistaRepository;
@@ -37,6 +44,46 @@ public class CourtController {
                     logger.error("Pista con ID {} no encontrada", id);
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada");
                 });
+    }
+
+    @GetMapping("/{id}/availability")
+    public ResponseEntity<?> getCourtAvailability(
+            @PathVariable Long id,
+            @RequestParam("date") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
+
+        Pista pista = pistaRepository.findById(id).orElse(null);
+
+        if (pista == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada");
+        }
+
+        List<String> franjasDisponibles = new java.util.ArrayList<>();
+
+        java.time.LocalTime hora = java.time.LocalTime.of(9, 0);
+        java.time.LocalTime cierre = java.time.LocalTime.of(22, 0);
+
+        while (hora.isBefore(cierre)) {
+            java.time.LocalTime horaFin = hora.plusHours(1);
+
+            boolean ocupada = reservaRepository.existsOverlappingReservation(
+                    id,
+                    date,
+                    hora,
+                    horaFin
+            );
+
+            if (!ocupada) {
+                franjasDisponibles.add(hora.toString());
+            }
+
+            hora = hora.plusHours(1);
+        }
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "idPista", id,
+                "fecha", date.toString(),
+                "franjasDisponibles", franjasDisponibles
+        ));
     }
 
     @PostMapping
