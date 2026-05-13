@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin | PistaPádel</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo">Pista<span>Pádel</span></a>
+    <div class="nav-links">
+      <a href="courts.html">Pistas</a>
+      <a href="reservations.html">Mis reservas</a>
+      <a href="admin.html">Admin</a>
+      <a href="login.html" class="btn btn-outline">Entrar</a>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="page-header">
+      <h1>Panel de administración</h1>
+      <p>Desde aquí se pueden gestionar las pistas y consultar las reservas.</p>
+    </section>
+
+    <div id="messageBox" class="message info" style="display:none;"></div>
+
+    <section class="card">
+      <div class="section-header">
+        <h2>Pistas</h2>
+      </div>
+
+      <form id="courtForm" class="grid-form">
+        <input type="hidden" id="courtId" />
+
+        <div class="form-group">
+          <label for="courtNombre">Nombre</label>
+          <input type="text" id="courtNombre" required />
+        </div>
+
+        <div class="form-group">
+          <label for="courtUbicacion">Ubicación</label>
+          <input type="text" id="courtUbicacion" required />
+        </div>
+
+        <div class="form-group">
+          <label for="courtPrecio">Precio</label>
+          <input type="number" id="courtPrecio" min="0" step="0.01" required />
+        </div>
+
+        <div class="form-group">
+          <label for="courtActiva">Estado</label>
+          <select id="courtActiva">
+            <option value="true">Activa</option>
+            <option value="false">Inactiva</option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="saveBtn">Guardar</button>
+          <button type="button" class="btn btn-outline" id="cancelBtn">Cancelar</button>
+        </div>
+      </form>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Ubicación</th>
+              <th>Precio</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="courtsTable"></tbody>
+        </table>
+      </div>
+
+      <div id="emptyCourts" class="empty-state" style="display:none;">
+        <div class="empty-icon">◎</div>
+        <h3>No hay pistas</h3>
+        <p>Añade una pista para empezar.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <h2>Reservas</h2>
+      </div>
+
+      <div class="filter-bar">
+        <div class="form-group">
+          <label for="filterDate">Fecha</label>
+          <input type="date" id="filterDate" />
+        </div>
+
+        <div class="form-group">
+          <label for="filterCourt">ID pista</label>
+          <input type="number" id="filterCourt" min="1" />
+        </div>
+
+        <div class="form-group">
+          <label for="filterUser">ID usuario</label>
+          <input type="number" id="filterUser" min="1" />
+        </div>
+
+        <button type="button" class="btn btn-primary" id="filterBtn">Filtrar</button>
+        <button type="button" class="btn btn-outline" id="clearBtn">Limpiar</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Reserva</th>
+              <th>Usuario</th>
+              <th>Pista</th>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="reservationsTable"></tbody>
+        </table>
+      </div>
+
+      <div id="emptyReservations" class="empty-state" style="display:none;">
+        <div class="empty-icon">◈</div>
+        <h3>No hay reservas</h3>
+        <p>No se encontraron resultados.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const messageBox = document.getElementById("messageBox");
+
+    const courtForm = document.getElementById("courtForm");
+    const courtId = document.getElementById("courtId");
+    const courtNombre = document.getElementById("courtNombre");
+    const courtUbicacion = document.getElementById("courtUbicacion");
+    const courtPrecio = document.getElementById("courtPrecio");
+    const courtActiva = document.getElementById("courtActiva");
+    const saveBtn = document.getElementById("saveBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+
+    const courtsTable = document.getElementById("courtsTable");
+    const emptyCourts = document.getElementById("emptyCourts");
+
+    const reservationsTable = document.getElementById("reservationsTable");
+    const emptyReservations = document.getElementById("emptyReservations");
+
+    const filterDate = document.getElementById("filterDate");
+    const filterCourt = document.getElementById("filterCourt");
+    const filterUser = document.getElementById("filterUser");
+    const filterBtn = document.getElementById("filterBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    let pistas = [
+      { id: 1, nombre: "Pista Central", ubicacion: "Interior", precio: 18, activa: true },
+      { id: 2, nombre: "Pista Norte", ubicacion: "Exterior", precio: 14, activa: true },
+      { id: 3, nombre: "Pista Sur", ubicacion: "Exterior", precio: 14, activa: false }
+    ];
+
+    let reservas = [
+      { id: 101, usuario: 12, pista: 1, fecha: "2026-04-18", hora: "18:00", estado: "ACTIVA" },
+      { id: 102, usuario: 8, pista: 2, fecha: "2026-04-18", hora: "19:00", estado: "ACTIVA" },
+      { id: 103, usuario: 15, pista: 3, fecha: "2026-04-19", hora: "17:00", estado: "CANCELADA" },
+      { id: 104, usuario: 12, pista: 1, fecha: "2026-04-20", hora: "20:00", estado: "ACTIVA" }
+    ];
+
+    function showMessage(text, type = "info") {
+      messageBox.style.display = "block";
+      messageBox.textContent = text;
+      messageBox.className = `message ${type}`;
+    }
+
+    function hideMessage() {
+      messageBox.style.display = "none";
+    }
+
+    function resetForm() {
+      courtForm.reset();
+      courtId.value = "";
+      courtActiva.value = "true";
+      saveBtn.textContent = "Guardar";
+    }
+
+    function renderPistas() {
+      courtsTable.innerHTML = "";
+
+      if (pistas.length === 0) {
+        emptyCourts.style.display = "block";
+        return;
+      }
+
+      emptyCourts.style.display = "none";
+
+      pistas.forEach(pista => {
+        const estado = pista.activa
+          ? '<span class="badge badge-active">Activa</span>'
+          : '<span class="badge badge-inactive">Inactiva</span>';
+
+        courtsTable.innerHTML += `
+          <tr>
+            <td>${pista.id}</td>
+            <td><strong>${pista.nombre}</strong></td>
+            <td>${pista.ubicacion}</td>
+            <td>${pista.precio}€</td>
+            <td>${estado}</td>
+            <td>
+              <button class="btn btn-small btn-outline" onclick="editarPista(${pista.id})">Editar</button>
+              <button class="btn btn-small btn-outline" onclick="cambiarEstado(${pista.id})">
+                ${pista.activa ? "Desactivar" : "Activar"}
+              </button>
+              <button class="btn btn-small btn-danger" onclick="eliminarPista(${pista.id})">Eliminar</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderReservas(lista = reservas) {
+      reservationsTable.innerHTML = "";
+
+      if (lista.length === 0) {
+        emptyReservations.style.display = "block";
+        return;
+      }
+
+      emptyReservations.style.display = "none";
+
+      lista.forEach(reserva => {
+        const estado = reserva.estado === "ACTIVA"
+          ? "badge-active"
+          : "badge-cancelled";
+
+        reservationsTable.innerHTML += `
+          <tr>
+            <td>${reserva.id}</td>
+            <td>${reserva.usuario}</td>
+            <td>${reserva.pista}</td>
+            <td><strong>${reserva.fecha}</strong></td>
+            <td>${reserva.hora}</td>
+            <td><span class="badge ${estado}">${reserva.estado}</span></td>
+          </tr>
+        `;
+      });
+    }
+
+    window.editarPista = function(id) {
+      const pista = pistas.find(p => p.id === id);
+      if (!pista) return;
+
+      courtId.value = pista.id;
+      courtNombre.value = pista.nombre;
+      courtUbicacion.value = pista.ubicacion;
+      courtPrecio.value = pista.precio;
+      courtActiva.value = String(pista.activa);
+
+      saveBtn.textContent = "Actualizar";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.cambiarEstado = function(id) {
+      pistas = pistas.map(p =>
+        p.id === id ? { ...p, activa: !p.activa } : p
+      );
+
+      renderPistas();
+      showMessage("Estado actualizado.", "success");
+    };
+
+    window.eliminarPista = function(id) {
+      if (!confirm("¿Seguro que quieres eliminar esta pista?")) return;
+
+      pistas = pistas.filter(p => p.id !== id);
+      renderPistas();
+      showMessage("Pista eliminada.", "success");
+      resetForm();
+    };
+
+    courtForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      hideMessage();
+
+      const id = courtId.value.trim();
+      const nombre = courtNombre.value.trim();
+      const ubicacion = courtUbicacion.value.trim();
+      const precio = parseFloat(courtPrecio.value);
+      const activa = courtActiva.value === "true";
+
+      if (!nombre || !ubicacion || isNaN(precio)) {
+        showMessage("Rellena todos los campos.", "error");
+        return;
+      }
+
+      if (id) {
+        pistas = pistas.map(p =>
+          String(p.id) === String(id)
+            ? { ...p, nombre, ubicacion, precio, activa }
+            : p
+        );
+        showMessage("Pista actualizada.", "success");
+      } else {
+        const nuevoId = pistas.length ? Math.max(...pistas.map(p => p.id)) + 1 : 1;
+
+        pistas.push({
+          id: nuevoId,
+          nombre,
+          ubicacion,
+          precio,
+          activa
+        });
+
+        showMessage("Pista creada.", "success");
+      }
+
+      resetForm();
+      renderPistas();
+    });
+
+    cancelBtn.addEventListener("click", resetForm);
+
+    function filtrarReservas() {
+      let resultado = [...reservas];
+
+      if (filterDate.value) {
+        resultado = resultado.filter(r => r.fecha === filterDate.value);
+      }
+
+      if (filterCourt.value) {
+        resultado = resultado.filter(r => String(r.pista) === filterCourt.value);
+      }
+
+      if (filterUser.value) {
+        resultado = resultado.filter(r => String(r.usuario) === filterUser.value);
+      }
+
+      renderReservas(resultado);
+    }
+
+    filterBtn.addEventListener("click", filtrarReservas);
+
+    clearBtn.addEventListener("click", function() {
+      filterDate.value = "";
+      filterCourt.value = "";
+      filterUser.value = "";
+      renderReservas();
+    });
+
+    renderPistas();
+    renderReservas();
+  </script>
+</body>
+</html>

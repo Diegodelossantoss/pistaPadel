@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 
 @RestController
+@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500"}, allowCredentials = "true")
 @RequestMapping("/pistaPadel/auth")
 public class AuthController {
 
@@ -49,6 +50,7 @@ public class AuthController {
         }
 
         if (!hashing.compare(usuario.getPassword(), datos.getPassword())) {
+            System.out.println("Password incorrecta para " + datos.getEmail());
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 

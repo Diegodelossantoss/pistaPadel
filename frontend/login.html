@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login | PistaPádel</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo">Pista<span>Pádel</span></a>
+    <div class="nav-links">
+      <a href="courts.html">Pistas</a>
+      <a href="reservations.html">Mis reservas</a>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="card auth-card">
+      <h1>Acceso a la aplicación</h1>
+      <p class="muted">Inicia sesión o crea tu cuenta</p>
+
+      <div class="tabs">
+        <button class="tab-btn active" id="tabLogin">Iniciar sesión</button>
+        <button class="tab-btn" id="tabRegister">Registrarse</button>
+      </div>
+
+      <div id="messageBox" class="message" style="display:none;"></div>
+
+      <form id="loginForm" class="form-section">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" required />
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword">Contraseña</label>
+          <input type="password" id="loginPassword" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Entrar</button>
+      </form>
+
+      <form id="registerForm" class="form-section" style="display:none;">
+        <div class="form-group">
+          <label for="registerNombre">Nombre</label>
+          <input type="text" id="registerNombre" required />
+        </div>
+
+        <div class="form-group">
+          <label for="registerApellidos">Apellidos</label>
+          <input type="text" id="registerApellidos" required />
+        </div>
+
+        <div class="form-group">
+          <label for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" required />
+        </div>
+
+        <div class="form-group">
+          <label for="registerPassword">Contraseña</label>
+          <input type="password" id="registerPassword" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Crear cuenta</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8080/pistaPadel";
+
+    const tabLogin = document.getElementById("tabLogin");
+    const tabRegister = document.getElementById("tabRegister");
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const messageBox = document.getElementById("messageBox");
+
+    function showMessage(text, type = "info") {
+      messageBox.style.display = "block";
+      messageBox.textContent = text;
+      messageBox.className = `message ${type}`;
+    }
+
+    function hideMessage() {
+      messageBox.style.display = "none";
+      messageBox.textContent = "";
+      messageBox.className = "message";
+    }
+
+    function mostrarLogin() {
+      tabLogin.classList.add("active");
+      tabRegister.classList.remove("active");
+      loginForm.style.display = "flex";
+      registerForm.style.display = "none";
+      hideMessage();
+    }
+
+    function mostrarRegistro() {
+      tabRegister.classList.add("active");
+      tabLogin.classList.remove("active");
+      registerForm.style.display = "flex";
+      loginForm.style.display = "none";
+      hideMessage();
+    }
+
+    tabLogin.addEventListener("click", mostrarLogin);
+    tabRegister.addEventListener("click", mostrarRegistro);
+
+    registerForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const nombre = document.getElementById("registerNombre").value.trim();
+      const apellidos = document.getElementById("registerApellidos").value.trim();
+      const email = document.getElementById("registerEmail").value.trim();
+      const password = document.getElementById("registerPassword").value;
+
+      if (!nombre || !apellidos || !email || !password) {
+        showMessage("Rellena todos los campos.", "error");
+        return;
+      }
+
+      const usuario = {
+        nombre: nombre,
+        apellidos: apellidos,
+        email: email,
+        password: password,
+        telefono: "",
+        rol: "USER",
+        activo: true
+      };
+
+      fetch(API_BASE + "/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(usuario)
+      })
+        .then(function(response) {
+          if (response.status === 201) {
+            showMessage("Registro completado. Ahora ya puedes iniciar sesión.", "success");
+            registerForm.reset();
+            mostrarLogin();
+          } else if (response.status === 409) {
+            showMessage("Ese email ya está registrado.", "error");
+          } else {
+            showMessage("No se ha podido registrar el usuario.", "error");
+          }
+        })
+        .catch(function() {
+          showMessage("No se puede conectar con el servidor.", "error");
+        });
+    });
+
+    loginForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      const datos = {
+        email: email,
+        password: password
+      };
+
+      fetch(API_BASE + "/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(datos)
+      })
+        .then(function(response) {
+          console.log("LOGIN STATUS:", response.status);
+
+          if (response.status === 200 || response.status === 201) {
+            showMessage("Login correcto. Redirigiendo...", "success");
+
+            setTimeout(function() {
+              window.location.href = "courts.html";
+            }, 700);
+          } else if (response.status === 401) {
+            showMessage("Email o contraseña incorrectos.", "error");
+          } else {
+            showMessage("Error en login. Código: " + response.status, "error");
+          }
+        })
+        .catch(function(error) {
+          console.log("ERROR FETCH LOGIN:", error);
+          showMessage("No se puede conectar con el servidor.", "error");
+        });
+    });
+  </script>
+</body>
+</html>

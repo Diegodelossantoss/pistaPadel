@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pistas disponibles | PistaPadel</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <a href="index.html" class="nav-logo">Pista<span>Pádel</span></a>
+    <div class="nav-links">
+        <a href="courts.html">Pistas</a>
+        <a href="reservations.html">Mis reservas</a>
+        <a href="login.html" class="btn btn-outline">Entrar</a>
+    </div>
+</nav>
+
+<!-- CONTENIDO PRINCIPAL -->
+<main class="page courts-page">
+    <section class="page-header">
+        <h1>Pistas disponibles</h1>
+        <p>Consulta la disponibilidad en tiempo real y reserva tu próxima partida de forma rápida y sencilla.</p>
+    </section>
+
+    <section class="filter-bar">
+        <div class="form-group">
+            <label for="resDate">Seleccionar fecha</label>
+            <input type="date" id="resDate" />
+        </div>
+
+        <button id="btnConsultar" class="btn btn-primary" type="button">
+            Consultar disponibilidad
+        </button>
+    </section>
+
+    <div id="messageBox" class="message info" style="display: none;"></div>
+
+    <section id="pistasGrid" class="availability-grid"></section>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container footer-inner">
+        <span class="nav-logo">Pista<span>Pádel</span></span>
+        <span class="footer-copy">© 2025 PistaPádel · ICAI Comillas</span>
+    </div>
+</footer>
+
+<script>
+  const API_BASE = "http://127.0.0.1:8080/pistaPadel";
+
+  const resDateInput = document.getElementById("resDate");
+  const btnConsultar = document.getElementById("btnConsultar");
+  const pistasGrid = document.getElementById("pistasGrid");
+  const messageBox = document.getElementById("messageBox");
+
+  const hoy = new Date().toISOString().split("T")[0];
+  resDateInput.value = hoy;
+  resDateInput.min = hoy;
+
+  function showMessage(text, type = "info") {
+    messageBox.style.display = "block";
+    messageBox.textContent = text;
+    messageBox.className = `message ${type}`;
+  }
+
+  function hideMessage() {
+    messageBox.style.display = "none";
+    messageBox.textContent = "";
+    messageBox.className = "message";
+  }
+
+  function setLoadingState(isLoading) {
+    btnConsultar.disabled = isLoading;
+    btnConsultar.textContent = isLoading ? "Cargando..." : "Consultar disponibilidad";
+  }
+
+  function renderEmptyState(text) {
+    pistasGrid.innerHTML = `
+      <div class="empty-state card" style="grid-column: 1 / -1;">
+        <div class="empty-icon">◎</div>
+        <h3>No hay pistas disponibles</h3>
+        <p>${text}</p>
+      </div>
+    `;
+  }
+
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return "";
+    return String(text)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function crearTarjetaPista(pista, franjasDisponibles) {
+    const slotsHtml = franjasDisponibles.length > 0
+      ? `
+        <div class="slots-grid">
+          ${franjasDisponibles.map(function(hora) {
+            return `
+              <button
+                class="slot slot-free"
+                type="button"
+                data-pista-id="${pista.idPista}"
+                data-fecha="${resDateInput.value}"
+                data-hora="${hora}">
+                ${hora}
+              </button>
+            `;
+          }).join("")}
+        </div>
+      `
+      : `<p class="muted">No hay franjas disponibles para esta fecha.</p>`;
+
+    return `
+      <article class="availability-card">
+        <div class="availability-card-header">
+          <span class="court-preview-name">${escapeHtml(pista.nombre)}</span>
+          <span class="badge badge-active">Activa</span>
+        </div>
+
+        <div class="availability-card-body">
+          <p class="court-meta">📍 ${escapeHtml(pista.ubicacion || "Ubicación no disponible")}</p>
+          <div class="divider"></div>
+          ${slotsHtml}
+        </div>
+
+        <div class="availability-card-footer">
+          <span class="muted">${franjasDisponibles.length} hueco(s) disponible(s)</span>
+          <span class="court-price">${escapeHtml(pista.precioHora)}€<span>/h</span></span>
+        </div>
+      </article>
+    `;
+  }
+
+  async function cargarPistas() {
+    const fecha = resDateInput.value;
+
+    if (!fecha) {
+      showMessage("Selecciona una fecha antes de consultar la disponibilidad.", "error");
+      return;
+    }
+
+    hideMessage();
+    setLoadingState(true);
+
+    pistasGrid.innerHTML = `
+      <div class="empty-state card" style="grid-column: 1 / -1;">
+        <div class="empty-icon">◈</div>
+        <h3>Cargando pistas</h3>
+        <p>Estamos consultando la disponibilidad para el día seleccionado.</p>
+      </div>
+    `;
+
+    try {
+      const respPistas = await fetch(API_BASE + "/courts?active=true", {
+        credentials: "include"
+      });
+
+      if (!respPistas.ok) {
+        throw new Error("No se pudieron cargar las pistas.");
+      }
+
+      const pistas = await respPistas.json();
+      const pistasActivas = pistas.filter(function(pista) {
+        return pista.activa;
+      });
+
+      if (pistasActivas.length === 0) {
+        renderEmptyState("Actualmente no hay pistas activas para mostrar.");
+        return;
+      }
+
+      const resultados = await Promise.all(
+        pistasActivas.map(async function(pista) {
+          try {
+            const respDisp = await fetch(
+              API_BASE + "/courts/" + pista.idPista + "/availability?date=" + fecha,
+              {
+                credentials: "include"
+              }
+            );
+
+            if (!respDisp.ok) {
+              return {
+                pista: pista,
+                franjasDisponibles: []
+              };
+            }
+
+            const disponibilidad = await respDisp.json();
+
+            const franjasDisponiblesRaw = Array.isArray(disponibilidad)
+              ? disponibilidad
+              : (disponibilidad.franjasDisponibles || []);
+
+           let franjasDisponibles = franjasDisponiblesRaw.map(function(hora) {
+  return String(hora).substring(0, 5);
+});
+
+        const hoyReal = new Date().toISOString().split("T")[0];
+
+        if (fecha === hoyReal) {
+          const ahora = new Date();
+
+          franjasDisponibles = franjasDisponibles.filter(function(hora) {
+            const partes = hora.split(":");
+            const fechaHora = new Date();
+            fechaHora.setHours(Number(partes[0]), Number(partes[1]), 0, 0);
+
+            return fechaHora > ahora;
+          });
+        }
+
+            return {
+              pista: pista,
+              franjasDisponibles: franjasDisponibles
+            };
+
+          } catch (error) {
+            console.log(error);
+            return {
+              pista: pista,
+              franjasDisponibles: []
+            };
+          }
+        })
+      );
+
+      pistasGrid.innerHTML = resultados
+        .map(function(resultado) {
+          return crearTarjetaPista(resultado.pista, resultado.franjasDisponibles);
+        })
+        .join("");
+
+    } catch (error) {
+      console.error(error);
+      renderEmptyState("Ha ocurrido un error al consultar la disponibilidad.");
+      showMessage(error.message || "Error inesperado al cargar las pistas.", "error");
+    } finally {
+      setLoadingState(false);
+    }
+  }
+
+  async function reservar(pistaId, fecha, hora, boton) {
+    const currentUser = localStorage.getItem("currentUser");
+
+    const bodyReserva = {
+      idPista: Number(pistaId),
+      fechaReserva: fecha,
+      horaInicio: hora,
+      duracionMinutos: 60
+    };
+
+    try {
+      boton.disabled = true;
+      boton.textContent = "Reservando...";
+
+      const resp = await fetch(API_BASE + "/reservations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(bodyReserva)
+      });
+
+      if (resp.status === 201 || resp.ok) {
+        showMessage("Reserva realizada correctamente para las " + hora + ".", "success");
+        await cargarPistas();
+        return;
+      }
+
+      if (resp.status === 401) {
+        localStorage.removeItem("currentUser");
+        window.location.href = "login.html";
+        return;
+      }
+
+      if (resp.status === 409) {
+        showMessage("Ese horario ya está ocupado.", "error");
+        await cargarPistas();
+        return;
+      }
+
+      const errorText = await resp.text();
+      throw new Error(errorText || "No se pudo completar la reserva.");
+
+    } catch (error) {
+      console.error(error);
+      showMessage(error.message || "Error al reservar la pista.", "error");
+      boton.disabled = false;
+      boton.textContent = hora;
+    }
+  }
+
+  btnConsultar.addEventListener("click", cargarPistas);
+
+  resDateInput.addEventListener("change", function() {
+    cargarPistas();
+  });
+
+  pistasGrid.addEventListener("click", async function(event) {
+    const slotButton = event.target.closest(".slot-free");
+
+    if (!slotButton) return;
+
+    const pistaId = slotButton.dataset.pistaId;
+    const fecha = slotButton.dataset.fecha;
+    const hora = slotButton.dataset.hora;
+
+    await reservar(pistaId, fecha, hora, slotButton);
+  });
+
+  cargarPistas();
+</script>
+
+</body>
+</html>

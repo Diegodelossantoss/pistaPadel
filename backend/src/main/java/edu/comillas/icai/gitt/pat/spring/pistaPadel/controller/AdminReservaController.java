@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500"}, allowCredentials = "true")
 @RestController
 @RequestMapping("/pistaPadel/admin")
 public class AdminReservaController {

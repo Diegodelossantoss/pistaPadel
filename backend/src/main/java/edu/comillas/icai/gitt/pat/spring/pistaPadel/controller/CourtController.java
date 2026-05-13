@@ -8,17 +8,12 @@ import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.TokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500"}, allowCredentials = "true")
 @RestController
@@ -49,11 +44,6 @@ public class CourtController {
         return token.usuario;
     }
 
-    private boolean esAdmin(String session) {
-        Usuario usuario = usuarioLogueado(session);
-        return usuario != null && "ADMIN".equals(usuario.getRol());
-    }
-
     @GetMapping
     public List<Pista> getAllCourts(@RequestParam(required = false) Boolean active) {
         logger.info("Consultando listado de pistas. Filtro activo: {}", active);
@@ -77,46 +67,6 @@ public class CourtController {
         }
 
         return ResponseEntity.ok(pista);
-    }
-
-    @GetMapping("/{id}/availability")
-    public ResponseEntity<?> getCourtAvailability(
-            @PathVariable Long id,
-            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-
-        Pista pista = pistaRepository.findById(id).orElse(null);
-
-        if (pista == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada");
-        }
-
-        List<String> franjasDisponibles = new ArrayList<>();
-
-        LocalTime hora = LocalTime.of(9, 0);
-        LocalTime cierre = LocalTime.of(22, 0);
-
-        while (hora.isBefore(cierre)) {
-            LocalTime horaFin = hora.plusHours(1);
-
-            boolean ocupada = reservaRepository.existsOverlappingReservation(
-                    id,
-                    date,
-                    hora,
-                    horaFin
-            );
-
-            if (!ocupada) {
-                franjasDisponibles.add(hora.toString());
-            }
-
-            hora = hora.plusHours(1);
-        }
-
-        return ResponseEntity.ok(Map.of(
-                "idPista", id,
-                "fecha", date.toString(),
-                "franjasDisponibles", franjasDisponibles
-        ));
     }
 
     @PostMapping
@@ -170,9 +120,18 @@ public class CourtController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Pista no encontrada");
         }
 
-        if (cambios.getNombre() != null) pista.setNombre(cambios.getNombre());
-        if (cambios.getUbicacion() != null) pista.setUbicacion(cambios.getUbicacion());
-        if (cambios.getPrecioHora() > 0) pista.setPrecioHora(cambios.getPrecioHora());
+        if (cambios.getNombre() != null) {
+            pista.setNombre(cambios.getNombre());
+        }
+
+        if (cambios.getUbicacion() != null) {
+            pista.setUbicacion(cambios.getUbicacion());
+        }
+
+        if (cambios.getPrecioHora() != null && cambios.getPrecioHora() > 0) {
+            pista.setPrecioHora(cambios.getPrecioHora());
+        }
+
         pista.setActiva(cambios.isActiva());
 
         Pista saved = pistaRepository.save(pista);

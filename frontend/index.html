@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PistaPádel — Reserva tu pista</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo">Pista<span>Pádel</span></a>
+    <div class="nav-links">
+      <a href="courts.html">Pistas</a>
+      <a href="reservations.html">Mis reservas</a>
+      <a href="login.html" class="btn btn-outline">Entrar</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-grid"></div>
+    </div>
+    <div class="hero-content">
+      <span class="hero-tag">Club de pádel · Madrid</span>
+      <h1 class="hero-title">Reserva tu<br /><em>pista perfecta</em></h1>
+      <p class="hero-sub">Consulta disponibilidad en tiempo real y gestiona tus reservas desde cualquier lugar.</p>
+      <div class="hero-actions">
+        <a href="courts.html" class="btn btn-primary">Ver pistas disponibles</a>
+        <a href="login.html" class="btn btn-ghost">Crear cuenta</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="court-card-preview">
+        <div class="court-preview-header">
+          <span class="court-preview-name">Pista Central</span>
+          <span class="badge badge-active">Disponible</span>
+        </div>
+        <div class="court-preview-slots">
+          <div class="slot slot-free">09:00</div>
+          <div class="slot slot-taken">10:00</div>
+          <div class="slot slot-taken">11:00</div>
+          <div class="slot slot-free">12:00</div>
+          <div class="slot slot-free">13:00</div>
+          <div class="slot slot-taken">14:00</div>
+          <div class="slot slot-free">15:00</div>
+          <div class="slot slot-free">16:00</div>
+          <div class="slot slot-taken">17:00</div>
+          <div class="slot slot-free">18:00</div>
+          <div class="slot slot-free">19:00</div>
+          <div class="slot slot-free">20:00</div>
+        </div>
+        <div class="court-preview-meta">
+          <span>📍 Interior · Planta baja</span>
+          <span>💶 18 €/h</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features">
+    <div class="container">
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">◎</div>
+          <h3>Disponibilidad en tiempo real</h3>
+          <p>Consulta los slots libres de cada pista al instante, sin esperas ni llamadas.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">◈</div>
+          <h3>Reserva en segundos</h3>
+          <p>Elige pista, fecha y hora. Tu reserva queda confirmada de forma inmediata.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">◻</div>
+          <h3>Gestiona tus partidas</h3>
+          <p>Edita o cancela tus reservas desde tu perfil cuando lo necesites.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COURTS PREVIEW -->
+  <section class="courts-preview">
+    <div class="container">
+      <div class="section-header">
+        <h2>Nuestras pistas</h2>
+        <a href="courts.html" class="link-arrow">Ver todas →</a>
+      </div>
+      <div class="courts-grid">
+        <div class="court-card">
+          <div class="court-card-top">
+            <div class="court-number">01</div>
+            <span class="badge badge-active">Activa</span>
+          </div>
+          <h3 class="court-name">Pista Central</h3>
+          <p class="court-meta">📍 Interior · Planta baja</p>
+          <p class="court-price">18 €<span>/hora</span></p>
+          <a href="courts.html" class="btn btn-outline btn-sm">Ver disponibilidad</a>
+        </div>
+        <div class="court-card">
+          <div class="court-card-top">
+            <div class="court-number">02</div>
+            <span class="badge badge-active">Activa</span>
+          </div>
+          <h3 class="court-name">Pista Norte</h3>
+          <p class="court-meta">📍 Exterior · Zona norte</p>
+          <p class="court-price">14 €<span>/hora</span></p>
+          <a href="courts.html" class="btn btn-outline btn-sm">Ver disponibilidad</a>
+        </div>
+        <div class="court-card">
+          <div class="court-card-top">
+            <div class="court-number">03</div>
+            <span class="badge badge-inactive">Inactiva</span>
+          </div>
+          <h3 class="court-name">Pista Sur</h3>
+          <p class="court-meta">📍 Exterior · Zona sur</p>
+          <p class="court-price">14 €<span>/hora</span></p>
+          <a href="courts.html" class="btn btn-outline btn-sm btn-disabled">No disponible</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-box">
+        <h2>¿Listo para jugar?</h2>
+        <p>Crea tu cuenta gratis y empieza a reservar hoy mismo.</p>
+        <a href="login.html" class="btn btn-primary">Registrarse gratis</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="nav-logo">Pista<span>Pádel</span></span>
+      <span class="footer-copy">© 2025 PistaPádel · ICAI Comillas</span>
+    </div>
+  </footer>
+
+</body>
+</html>
