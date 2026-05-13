@@ -1,14 +1,12 @@
 package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
 
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Token;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.TokenRepository;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.Authentication;
 
 import java.util.Map;
 
@@ -16,64 +14,94 @@ import java.util.Map;
 @RequestMapping("/pistaPadel/users")
 public class UserController {
 
-    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserRepository userRepository;
+    private final TokenRepository tokenRepository;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, TokenRepository tokenRepository) {
         this.userRepository = userRepository;
+        this.tokenRepository = tokenRepository;
+    }
+
+    private Usuario usuarioLogueado(String session) {
+        Token token = tokenRepository.findById(session).orElse(null);
+        if (token == null) return null;
+        return token.usuario;
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllUsers() {
-        logger.info("ADMIN solicitando lista de usuarios");
+    public ResponseEntity<?> getAllUsers(@CookieValue(value = "session", required = false) String session) {
+        Usuario logueado = usuarioLogueado(session);
+
+        if (logueado == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
+        }
+
+        if (!"ADMIN".equals(logueado.getRol())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No autorizado");
+        }
+
         return ResponseEntity.ok(userRepository.findAll());
     }
 
-
     @GetMapping("/{userId}")
-    public ResponseEntity<?> getUserById(@PathVariable Long userId, Authentication authentication) {
-        logger.debug("Buscando usuario ID: {}", userId);
+    public ResponseEntity<?> getUserById(@PathVariable Long userId,
+                                         @CookieValue(value = "session", required = false) String session) {
+        Usuario logueado = usuarioLogueado(session);
 
-
-        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
-        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(userId))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para ver este perfil");
+        if (logueado == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
         }
 
-        return userRepository.findById(userId)
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> {
-                    logger.error("Usuario {} no encontrado", userId);
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
-                });
+        if (!"ADMIN".equals(logueado.getRol()) && !logueado.getIdUsuario().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso");
+        }
+
+        Usuario usuario = userRepository.findById(userId).orElse(null);
+
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
+        }
+
+        return ResponseEntity.ok(usuario);
     }
 
     @PatchMapping("/{userId}")
-    public ResponseEntity<?> patchUser(@PathVariable Long userId, @RequestBody Map<String, Object> updates, Authentication authentication) { // AÑADIDO: Authentication
-        logger.info("Actualizando usuario ID: {}", userId);
+    public ResponseEntity<?> patchUser(@PathVariable Long userId,
+                                       @RequestBody Map<String, Object> updates,
+                                       @CookieValue(value = "session", required = false) String session) {
+        Usuario logueado = usuarioLogueado(session);
 
-        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
-        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(userId))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para modificar este perfil");
+        if (logueado == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
         }
 
-        Usuario u = userRepository.findById(userId).orElse(null);
-        if (u == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        if (!"ADMIN".equals(logueado.getRol()) && !logueado.getIdUsuario().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso");
+        }
 
-        if (updates.containsKey("nombre")) u.setNombre((String) updates.get("nombre"));
-        if (updates.containsKey("telefono")) u.setTelefono((String) updates.get("telefono"));
+        Usuario usuario = userRepository.findById(userId).orElse(null);
+
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
+        }
+
+        if (updates.containsKey("nombre")) usuario.setNombre((String) updates.get("nombre"));
+        if (updates.containsKey("telefono")) usuario.setTelefono((String) updates.get("telefono"));
 
         if (updates.containsKey("email")) {
-            String mail = (String) updates.get("email");
-            boolean existe = userRepository.findByEmail(mail)
-                    .filter(other -> !other.getIdUsuario().equals(userId)).isPresent();
+            String email = (String) updates.get("email");
+
+            boolean existe = userRepository.findByEmail(email)
+                    .filter(other -> !other.getIdUsuario().equals(userId))
+                    .isPresent();
+
             if (existe) {
-                logger.error("Conflicto: El email {} ya existe", mail);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Email duplicado");
             }
-            u.setEmail(mail);
+
+            usuario.setEmail(email);
         }
-        return ResponseEntity.ok(userRepository.save(u));
+
+        return ResponseEntity.ok(userRepository.save(usuario));
     }
 }
-

@@ -1,154 +1,161 @@
 package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
 
-import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Pista;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Reserva;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Token;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
-import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.PistaRepository;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository;
-import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.TokenRepository;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.service.PadelService;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+class ReservaControllerTest {
 
-@SpringBootTest
-@AutoConfigureMockMvc
+    ReservaRepository reservaRepository = mock(ReservaRepository.class);
+    PadelService padelService = mock(PadelService.class);
+    TokenRepository tokenRepository = mock(TokenRepository.class);
 
-public class ReservaControllerTest {
+    ReservaController controller = new ReservaController(
+            reservaRepository,
+            padelService,
+            tokenRepository
+    );
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ReservaRepository reservaRepository;
-
-    @Autowired
-    private PistaRepository pistaRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    private Long idUsuario;
-    private Long idPista;
-
-    @BeforeEach
-    void setUp() {
-        reservaRepository.deleteAll();
-        pistaRepository.deleteAll();
-        userRepository.deleteAll();
-
+    private Usuario usuario() {
         Usuario usuario = new Usuario();
-        usuario.setNombre("Lucia");
-        usuario.setApellidos("Garcia");
-        usuario.setEmail("lucia@test.com");
-        usuario.setPassword("1234");
-        usuario.setTelefono("666111222");
+        usuario.setIdUsuario(1L);
+        usuario.setNombre("Blanca");
+        usuario.setEmail("blanca@test.com");
         usuario.setRol("USER");
-        usuario.setActivo(true);
-        usuario.setFechaRegistro(LocalDateTime.now());
-        usuario = userRepository.save(usuario);
-        idUsuario = usuario.getIdUsuario();
-
-        Pista pista = new Pista();
-        pista.setNombre("Pista Reserva Test");
-        pista.setUbicacion("Madrid");
-        pista.setPrecioHora(20.0);
-        pista.setActiva(true);
-        pista.setFechaAlta(LocalDateTime.now());
-        pista = pistaRepository.save(pista);
-        idPista = pista.getIdPista();
+        return usuario;
     }
 
-    @Test
-    @WithMockUser(username = "lucia@test.com", roles = "USER")
-    void getReservations_shouldReturn200() throws Exception {
-        mockMvc.perform(get("/pistaPadel/reservations"))
-                .andExpect(status().isOk());
+    private Usuario admin() {
+        Usuario usuario = new Usuario();
+        usuario.setIdUsuario(2L);
+        usuario.setNombre("Admin");
+        usuario.setEmail("admin@test.com");
+        usuario.setRol("ADMIN");
+        return usuario;
     }
 
-    @Test
-    @WithMockUser(username = "lucia@test.com", roles = "USER")
-    void createReservation_shouldReturn201() throws Exception {
-        String body = """
-            {
-              "idUsuario": %d,
-              "idPista": %d,
-              "fechaReserva": "2026-03-20",
-              "horaInicio": "10:00:00",
-              "duracionMinutos": 60
-            }
-            """.formatted(idUsuario, idPista);
-
-        mockMvc.perform(post("/pistaPadel/reservations")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated());
+    private Token token(Usuario usuario) {
+        Token token = new Token();
+        token.usuario = usuario;
+        return token;
     }
 
-    @Test
-    @WithMockUser(username = "lucia@test.com", roles = "USER")
-    void getReservationById_notFound_shouldReturn404() throws Exception {
-        mockMvc.perform(get("/pistaPadel/reservations/99999"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @WithMockUser(username = "lucia@test.com", roles = "USER")
-    void cancelReservation_shouldReturn204() throws Exception {
+    private Reserva reserva() {
         Reserva reserva = new Reserva();
-        reserva.setIdUsuario(idUsuario);
-        reserva.setIdPista(idPista);
-        reserva.setFechaReserva(LocalDate.of(2026, 3, 21));
-        reserva.setHoraInicio(LocalTime.of(11, 0));
+        reserva.setIdReserva(1L);
+        reserva.setIdUsuario(1L);
+        reserva.setIdPista(1L);
+        reserva.setFechaReserva(LocalDate.of(2026, 5, 13));
+        reserva.setHoraInicio(LocalTime.of(10, 0));
         reserva.setDuracionMinutos(60);
-        reserva.setHoraFin(LocalTime.of(12, 0));
-        reserva.setEstado("CONFIRMADA");
-        reserva.setFechaCreacion(LocalDateTime.now());
-        reserva = reservaRepository.save(reserva);
-
-        mockMvc.perform(delete("/pistaPadel/reservations/" + reserva.getIdReserva()))
-                .andExpect(status().isNoContent());
+        reserva.setHoraFin(LocalTime.of(11, 0));
+        reserva.setEstado("ACTIVA");
+        return reserva;
     }
 
     @Test
-    @WithMockUser(username = "lucia@test.com", roles = "USER")
-    void patchReservation_shouldReturn200() throws Exception {
-        Reserva reserva = new Reserva();
-        reserva.setIdUsuario(idUsuario);
-        reserva.setIdPista(idPista);
-        reserva.setFechaReserva(LocalDate.of(2026, 3, 22));
-        reserva.setHoraInicio(LocalTime.of(12, 0));
-        reserva.setDuracionMinutos(60);
-        reserva.setHoraFin(LocalTime.of(13, 0));
-        reserva.setEstado("CONFIRMADA");
-        reserva.setFechaCreacion(LocalDateTime.now());
-        reserva = reservaRepository.save(reserva);
+    void getReservationsSinLoginDevuelve401() {
+        ResponseEntity<?> response = controller.getReservations(null, null, null);
 
-        String body = """
-            {
-              "horaInicio": "13:00:00",
-              "duracionMinutos": 90
-            }
-            """;
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
 
-        mockMvc.perform(patch("/pistaPadel/reservations/" + reserva.getIdReserva())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk());
+    @Test
+    void getReservationsConLoginDevuelveReservas() {
+        Usuario usuario = usuario();
+        Token token = token(usuario);
+
+        when(tokenRepository.findById("abc")).thenReturn(java.util.Optional.of(token));
+        when(reservaRepository.findByIdUsuario(1L)).thenReturn(List.of(reserva()));
+
+        ResponseEntity<?> response = controller.getReservations("abc", null, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    void getReservationByIdSinLoginDevuelve401() {
+        ResponseEntity<?> response = controller.getReservationById(1L, null);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    void getReservationByIdNoExisteDevuelve404() {
+        Usuario usuario = usuario();
+
+        when(tokenRepository.findById("abc")).thenReturn(java.util.Optional.of(token(usuario)));
+        when(reservaRepository.findById(1L)).thenReturn(java.util.Optional.empty());
+
+        ResponseEntity<?> response = controller.getReservationById(1L, "abc");
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
+    @Test
+    void createReservationSinLoginDevuelve401() {
+        ResponseEntity<?> response = controller.createReservation(reserva(), null);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    void createReservationConLoginDevuelve201() {
+        Usuario usuario = usuario();
+        Reserva reserva = reserva();
+
+        when(tokenRepository.findById("abc")).thenReturn(java.util.Optional.of(token(usuario)));
+        when(padelService.crearReserva(any(Reserva.class))).thenReturn(reserva);
+
+        ResponseEntity<?> response = controller.createReservation(reserva, "abc");
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+    }
+
+    @Test
+    void cancelReservationSinLoginDevuelve401() {
+        ResponseEntity<?> response = controller.cancelReservation(1L, null);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    void cancelReservationConUsuarioDuenioDevuelve204() {
+        Usuario usuario = usuario();
+        Reserva reserva = reserva();
+
+        when(tokenRepository.findById("abc")).thenReturn(java.util.Optional.of(token(usuario)));
+        when(reservaRepository.findById(1L)).thenReturn(java.util.Optional.of(reserva));
+
+        ResponseEntity<?> response = controller.cancelReservation(1L, "abc");
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertEquals("CANCELADA", reserva.getEstado());
+    }
+
+    @Test
+    void cancelReservationUsuarioNoDuenioDevuelve403() {
+        Usuario otro = usuario();
+        otro.setIdUsuario(99L);
+
+        when(tokenRepository.findById("abc")).thenReturn(java.util.Optional.of(token(otro)));
+        when(reservaRepository.findById(1L)).thenReturn(java.util.Optional.of(reserva()));
+
+        ResponseEntity<?> response = controller.cancelReservation(1L, "abc");
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
     }
 }

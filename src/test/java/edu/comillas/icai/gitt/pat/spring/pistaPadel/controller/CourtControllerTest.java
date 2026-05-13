@@ -1,6 +1,10 @@
 package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
 
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Pista;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Token;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.TokenRepository;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.PistaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -28,6 +33,14 @@ public class CourtControllerTest {
     @Autowired
     private PistaRepository pistaRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private TokenRepository tokenRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;  
     @BeforeEach
     void setUp() {
         pistaRepository.deleteAll();
@@ -57,18 +70,49 @@ public class CourtControllerTest {
     }
 
     @Test
-    void createCourt_shouldReturn201() throws Exception {
-        String body = """
-            {
-              "nombre": "Pista Nueva",
-              "ubicacion": "Alcobendas",
-              "precioHora": 25.0
-            }
-            """;
+    void createCourt_shouldReturn401_withoutLogin() throws Exception {
+        Pista nueva = new Pista();
+        nueva.setNombre("Pista Nueva");
+        nueva.setUbicacion("Exterior");
+        nueva.setPrecioHora(20.0);
+        nueva.setActiva(true);
+        nueva.setFechaAlta(LocalDateTime.now());
 
         mockMvc.perform(post("/pistaPadel/courts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+                        .content(objectMapper.writeValueAsString(nueva)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createCourt_shouldReturn201_withAdmin() throws Exception {
+        Usuario admin = new Usuario();
+        admin.setNombre("Admin");
+        admin.setApellidos("Padel");
+        admin.setEmail("admin@test.com");
+        admin.setPassword("1234");
+        admin.setTelefono("600000000");
+        admin.setRol("ADMIN");
+        admin.setActivo(true);
+        admin.setFechaRegistro(LocalDateTime.now());
+
+        admin = userRepository.save(admin);
+
+        Token token = new Token();
+        token.usuario = admin;
+        token = tokenRepository.save(token);
+
+        Pista nueva = new Pista();
+        nueva.setNombre("Pista Nueva");
+        nueva.setUbicacion("Exterior");
+        nueva.setPrecioHora(20.0);
+        nueva.setActiva(true);
+        nueva.setFechaAlta(LocalDateTime.now());
+
+        mockMvc.perform(post("/pistaPadel/courts")
+                        .cookie(new jakarta.servlet.http.Cookie("session", token.id))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(nueva)))
                 .andExpect(status().isCreated());
     }
 

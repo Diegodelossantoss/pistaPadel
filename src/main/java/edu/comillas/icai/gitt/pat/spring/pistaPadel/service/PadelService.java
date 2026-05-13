@@ -56,13 +56,15 @@ public class PadelService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No puedes reservar en una fecha o hora que ya ha pasado");
         }
 
-        LocalTime horaFinReal = reserva.getHoraFin();
-        if (horaFinReal == null) {
-            if (reserva.getDuracionMinutos() <= 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debes indicar duración");
-            }
-            horaFinReal = reserva.getHoraInicio().plusMinutes(reserva.getDuracionMinutos());
+        if (reserva.getDuracionMinutos() <= 0) {
+            reserva.setDuracionMinutos(60);
         }
+
+        if (reserva.getDuracionMinutos() != 60 && reserva.getDuracionMinutos() != 90) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La duración debe ser de 60 o 90 minutos");
+        }
+
+        LocalTime horaFinReal = reserva.getHoraInicio().plusMinutes(reserva.getDuracionMinutos());
 
 
         if (reserva.getHoraInicio().isBefore(HORA_APERTURA) || horaFinReal.isAfter(HORA_CIERRE)) {

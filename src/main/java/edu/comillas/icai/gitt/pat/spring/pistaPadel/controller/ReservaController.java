@@ -1,13 +1,12 @@
 package edu.comillas.icai.gitt.pat.spring.pistaPadel.controller;
 
-import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
-import edu.comillas.icai.gitt.pat.spring.pistaPadel.service.PadelService;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Reserva;
-import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.PistaRepository;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Token;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.model.Usuario;
 import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.ReservaRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.TokenRepository;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
+import edu.comillas.icai.gitt.pat.spring.pistaPadel.service.PadelService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +15,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.security.Principal;
-import edu.comillas.icai.gitt.pat.spring.pistaPadel.repository.UserRepository;
-import org.springframework.security.core.Authentication;
-
 
 @RestController
 @RequestMapping("/pistaPadel/reservations")
@@ -27,88 +22,106 @@ public class ReservaController {
 
     private final ReservaRepository reservaRepository;
     private final PadelService padelService;
-    private final UserRepository userRepository;
-    private static final Logger logger = LoggerFactory.getLogger(ReservaController.class);
+    private final TokenRepository tokenRepository;
 
-    public ReservaController(ReservaRepository reservaRepository, PadelService PadelService, UserRepository userRepository) {
+    public ReservaController(ReservaRepository reservaRepository,
+                             PadelService padelService,
+                             TokenRepository tokenRepository) {
         this.reservaRepository = reservaRepository;
-        this.padelService = PadelService;
-        this.userRepository = userRepository;
+        this.padelService = padelService;
+        this.tokenRepository = tokenRepository;
+    }
+
+    private Usuario usuarioLogueado(String session) {
+        Token token = tokenRepository.findById(session).orElse(null);
+        if (token == null) return null;
+        return token.usuario;
     }
 
     @GetMapping
-    public ResponseEntity<?> getReservations(Principal principal,
+    public ResponseEntity<?> getReservations(@CookieValue(value = "session", required = false) String session,
                                              @RequestParam(required = false) String from,
                                              @RequestParam(required = false) String to) {
-        if (principal == null) {
+        Usuario usuario = usuarioLogueado(session);
+
+        if (usuario == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
         }
 
-        String email = principal.getName();
+        List<Reserva> reservas = reservaRepository.findByIdUsuario(usuario.getIdUsuario());
 
-        return userRepository.findByEmail(email)
-                .<ResponseEntity<?>>map(usuario -> {
-                    List<Reserva> reservas = reservaRepository.findByIdUsuario(usuario.getIdUsuario());
+        if (from != null) {
+            LocalDate fromDate = LocalDate.parse(from);
+            reservas = reservas.stream()
+                    .filter(r -> !r.getFechaReserva().isBefore(fromDate))
+                    .collect(Collectors.toList());
+        }
 
-                    if (from != null) {
-                        LocalDate fromDate = LocalDate.parse(from);
-                        reservas = reservas.stream()
-                                .filter(r -> !r.getFechaReserva().isBefore(fromDate))
-                                .collect(Collectors.toList());
-                    }
-                    if (to != null) {
-                        LocalDate toDate = LocalDate.parse(to);
-                        reservas = reservas.stream()
-                                .filter(r -> !r.getFechaReserva().isAfter(toDate))
-                                .collect(Collectors.toList());
-                    }
+        if (to != null) {
+            LocalDate toDate = LocalDate.parse(to);
+            reservas = reservas.stream()
+                    .filter(r -> !r.getFechaReserva().isAfter(toDate))
+                    .collect(Collectors.toList());
+        }
 
-                    return ResponseEntity.ok(reservas);
-                })
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado"));
+        return ResponseEntity.ok(reservas);
     }
 
-
     @GetMapping("/{id}")
-    public ResponseEntity<?> getReservationById(@PathVariable Long id, Authentication authentication) {
-        Reserva reserva = reservaRepository.findById(id).orElse(null);
-        if (reserva == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
+    public ResponseEntity<?> getReservationById(@PathVariable Long id,
+                                                @CookieValue(value = "session", required = false) String session) {
+        Usuario logueado = usuarioLogueado(session);
 
-        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
-        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para ver esta reserva");
+        if (logueado == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
+        }
+
+        Reserva reserva = reservaRepository.findById(id).orElse(null);
+
+        if (reserva == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
+        }
+
+        if (!"ADMIN".equals(logueado.getRol()) && !logueado.getIdUsuario().equals(reserva.getIdUsuario())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso");
         }
 
         return ResponseEntity.ok(reserva);
     }
 
     @PostMapping
-    public ResponseEntity<?> createReservation(@RequestBody Reserva reserva, Authentication authentication) {
-        logger.info("Intento de crear reserva");
-
-        Usuario usuario = userRepository.findByEmail(authentication.getName()).orElse(null);
+    public ResponseEntity<?> createReservation(@RequestBody Reserva reserva,
+                                               @CookieValue(value = "session", required = false) String session) {
+        Usuario usuario = usuarioLogueado(session);
 
         if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no autenticado");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
         }
 
         reserva.setIdUsuario(usuario.getIdUsuario());
 
         Reserva saved = padelService.crearReserva(reserva);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> cancelReservation(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> cancelReservation(@PathVariable Long id,
+                                               @CookieValue(value = "session", required = false) String session) {
+        Usuario logueado = usuarioLogueado(session);
+
+        if (logueado == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
+        }
 
         Reserva reserva = reservaRepository.findById(id).orElse(null);
+
         if (reserva == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
         }
 
-        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
-        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No puedes cancelar una reserva que no es tuya");
+        if (!"ADMIN".equals(logueado.getRol()) && !logueado.getIdUsuario().equals(reserva.getIdUsuario())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No puedes cancelar esta reserva");
         }
 
         if ("CANCELADA".equalsIgnoreCase(reserva.getEstado())) {
@@ -117,38 +130,42 @@ public class ReservaController {
 
         reserva.setEstado("CANCELADA");
         reservaRepository.save(reserva);
+
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<?> patchReservation(@PathVariable Long id, @RequestBody Reserva cambios, Authentication authentication) {
+    public ResponseEntity<?> patchReservation(@PathVariable Long id,
+                                              @RequestBody Reserva cambios,
+                                              @CookieValue(value = "session", required = false) String session) {
+        Usuario logueado = usuarioLogueado(session);
+
+        if (logueado == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No autenticado");
+        }
 
         Reserva reserva = reservaRepository.findById(id).orElse(null);
+
         if (reserva == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reserva no encontrada");
         }
 
-        Usuario logueado = userRepository.findByEmail(authentication.getName()).orElse(null);
-        if (logueado == null || (!logueado.getRol().equals("ADMIN") && !logueado.getIdUsuario().equals(reserva.getIdUsuario()))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso para modificar esta reserva");
+        if (!"ADMIN".equals(logueado.getRol()) && !logueado.getIdUsuario().equals(reserva.getIdUsuario())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No tienes permiso");
         }
 
         if ("CANCELADA".equalsIgnoreCase(reserva.getEstado())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("No se puede modificar una reserva que ya ha sido cancelada");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("No se puede modificar una reserva cancelada");
         }
 
         if (cambios.getFechaReserva() != null) reserva.setFechaReserva(cambios.getFechaReserva());
         if (cambios.getHoraInicio() != null) reserva.setHoraInicio(cambios.getHoraInicio());
         if (cambios.getDuracionMinutos() > 0) reserva.setDuracionMinutos(cambios.getDuracionMinutos());
 
-        LocalTime horaFinReal = reserva.getHoraInicio().plusMinutes(reserva.getDuracionMinutos());
-        reserva.setHoraFin(horaFinReal);
+        LocalTime horaFin = reserva.getHoraInicio().plusMinutes(reserva.getDuracionMinutos());
+        reserva.setHoraFin(horaFin);
 
-        if (!reserva.getHoraInicio().isBefore(reserva.getHoraFin())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Horario inválido");
-        }
-
-        boolean overlap = reservaRepository.existsOverlappingReservationExcludingId(
+        boolean ocupada = reservaRepository.existsOverlappingReservationExcludingId(
                 reserva.getIdPista(),
                 reserva.getFechaReserva(),
                 reserva.getHoraInicio(),
@@ -156,11 +173,10 @@ public class ReservaController {
                 reserva.getIdReserva()
         );
 
-        if (overlap) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Nuevo horario ocupado");
+        if (ocupada) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Horario ocupado");
         }
 
-        Reserva saved = reservaRepository.save(reserva);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(reservaRepository.save(reserva));
     }
 }
