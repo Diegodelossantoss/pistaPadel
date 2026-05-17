@@ -1,6 +1,39 @@
 # PistaPadel Backend
 
-Backend del proyecto de reserva de pistas de pádel desarrollado con Spring Boot.
+## Integrantes del equipo
+
+Diego de los Santos González
+Blanca Manrique Sanz
+Inés González Lázaro
+Lucía Victoria Hohenleitner Bueno
+
+
+## Usuarios de prueba
+
+Al arrancar la aplicación se crean automáticamente los siguientes usuarios:
+
+### Administrador
+| Campo | Valor |
+|-------|-------|
+| Email | `adminapp@test.com` |
+| Contraseña | `1234` |
+| Rol | `ADMIN` |
+
+
+### Usuario normal
+Regístrate desde la página de login con cualquier email y contraseña. El rol asignado será `USER` automáticamente.
+
+| Campo | Valor de ejemplo |
+|-------|-----------------|
+| Nombre | `Blanca` |
+| Apellidos | `Manrique` |
+| Email | `blanca@gmail.com` |
+| Contraseña | `1234` |
+| Rol | `USER` (asignado automáticamente) |
+
+
+
+---
 
 ## Tecnologías
 - Java 21
@@ -12,43 +45,45 @@ Backend del proyecto de reserva de pistas de pádel desarrollado con Spring Boot
 - GitHub Actions
 
 ## Cómo ejecutar el proyecto
-1. Abrir el proyecto en IntelliJ
-2. Esperar a que Maven cargue las dependencias
-3. Ejecutar la clase principal `PistaPadelApplication`
-4. El backend arranca en:
-   `http://localhost:8080`
+
+```bash
+mvn spring-boot:run
+```
+
+
+El frontend debe abrirse con **Live Server** desde VS Code (clic derecho en `login.html` → *Open with Live Server*).
 
 ## Base de datos
-El proyecto usa H2 en memoria.
+El proyecto usa H2 en memoria. Los datos se pierden al reiniciar el servidor.
 
 Configuración principal en `application.properties`:
 - URL: `jdbc:h2:mem:pistapadel`
-- usuario: `sa`
-- consola H2 habilitada en:
-  `http://localhost:8080/h2-console`
+- Usuario: `sa`
+- Consola H2 habilitada en: `http://localhost:8080/h2-console`
 
 ## Endpoints principales
+
 ### Auth
 - `POST /pistaPadel/auth/register`
 - `POST /pistaPadel/auth/login`
 - `POST /pistaPadel/auth/logout`
-- `GET /pistaPadel/auth/me`
+- `GET  /pistaPadel/auth/me`
 
 ### Usuarios
-- `GET /pistaPadel/users`
-- `GET /pistaPadel/users/{id}`
+- `GET   /pistaPadel/users`
+- `GET   /pistaPadel/users/{id}`
 - `PATCH /pistaPadel/users/{id}`
 
 ### Pistas
-- `GET /pistaPadel/courts`
-- `GET /pistaPadel/courts/{id}`
+- `GET  /pistaPadel/courts`
+- `GET  /pistaPadel/courts/{id}`
 - `POST /pistaPadel/courts`
 
 ### Reservas
-- `GET /pistaPadel/reservations`
-- `GET /pistaPadel/reservations/{id}`
-- `POST /pistaPadel/reservations`
-- `PATCH /pistaPadel/reservations/{id}`
+- `GET    /pistaPadel/reservations`
+- `GET    /pistaPadel/reservations/{id}`
+- `POST   /pistaPadel/reservations`
+- `PATCH  /pistaPadel/reservations/{id}`
 - `DELETE /pistaPadel/reservations/{id}`
 
 ### Disponibilidad y salud
@@ -56,7 +91,16 @@ Configuración principal en `application.properties`:
 - `GET /pistaPadel/health`
 
 ## Tests
-Para ejecutar los tests en local:
+
+```bash
+mvn test
+```
+
+O con el wrapper de Maven:
 
 ```bash
 ./mvnw test
+```
+
+
+

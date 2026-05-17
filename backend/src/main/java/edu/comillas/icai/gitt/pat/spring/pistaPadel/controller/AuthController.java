@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 
 @RestController
-@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500"}, allowCredentials = "true")
+@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500", "http://127.0.0.1:5501", "http://localhost:5501"}, allowCredentials = "true")
 @RequestMapping("/pistaPadel/auth")
 public class AuthController {
 
@@ -30,6 +30,12 @@ public class AuthController {
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public Usuario register(@RequestBody Usuario usuario) {
+        if (usuario.getNombre() == null || usuario.getNombre().isBlank() ||
+                usuario.getApellidos() == null || usuario.getApellidos().isBlank() ||
+                usuario.getEmail() == null || usuario.getEmail().isBlank() ||
+                usuario.getPassword() == null || usuario.getPassword().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Faltan campos obligatorios");
+        }
         try {
             usuario.setPassword(hashing.hash(usuario.getPassword()));
             usuario.setRol("USER");
@@ -66,11 +72,11 @@ public class AuthController {
                 .from("session", token.id)
                 .httpOnly(true)
                 .path("/")
-                .sameSite("Strict")
+                .sameSite("Lax")   // ← cambiado de Strict a Lax
                 .build();
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
+                .status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .build();
     }
@@ -89,7 +95,7 @@ public class AuthController {
                 .httpOnly(true)
                 .path("/")
                 .maxAge(0)
-                .sameSite("Strict")
+                .sameSite("Lax")   // ← cambiado de Strict a Lax
                 .build();
 
         return ResponseEntity
