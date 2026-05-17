@@ -1,5 +1,7 @@
 # PistaPadel Backend
 
+Frontend en GitHub Pages: https://blancamanriquesz.github.io/pistaPadel/frontend/
+
 ## Integrantes del equipo
 
 Diego de los Santos González
