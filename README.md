@@ -47,6 +47,11 @@ Regístrate desde la página de login con cualquier email y contraseña. El rol 
 - GitHub Actions
 
 ## Cómo ejecutar el proyecto
+Entrar en la carpeta de backend:
+```bash
+cd backend
+```
+A continuacion, ejecutar: 
 
 ```bash
 mvn spring-boot:run
